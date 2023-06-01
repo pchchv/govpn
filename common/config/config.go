@@ -1,5 +1,7 @@
 package config
 
+import "github.com/pchchv/govpn/common/cipher"
+
 type Config struct {
 	Key        string
 	CIDR       string
@@ -7,4 +9,8 @@ type Config struct {
 	LocalAddr  string
 	ServerAddr string
 	ServerMode bool
+}
+
+func (config *Config) Init() {
+	cipher.GenerateKey(config.Key)
 }
