@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/gorilla/websocket"
 	"github.com/pchchv/govpn/common/config"
 )
@@ -33,4 +35,18 @@ func ConnectWS(config config.Config) *websocket.Conn {
 func CloseWS(wsConn *websocket.Conn) {
 	wsConn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second*5))
 	wsConn.Close()
+}
+
+func GetPort(b []byte) (srcPort string, dstPort string) {
+	packet := gopacket.NewPacket(b, layers.LayerTypeIPv4, gopacket.Default)
+
+	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
+		tcp, _ := tcpLayer.(*layers.TCP)
+		return tcp.SrcPort.String(), tcp.DstPort.String()
+	} else if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
+		udp, _ := udpLayer.(*layers.UDP)
+		return udp.SrcPort.String(), udp.DstPort.String()
+	}
+
+	return "", ""
 }
