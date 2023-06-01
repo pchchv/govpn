@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pchchv/govpn/common/config"
@@ -27,4 +28,9 @@ func ConnectWS(config config.Config) *websocket.Conn {
 	}
 
 	return c
+}
+
+func CloseWS(wsConn *websocket.Conn) {
+	wsConn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second*5))
+	wsConn.Close()
 }
