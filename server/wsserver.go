@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -66,4 +67,9 @@ func wsToVpn(wsConn *websocket.Conn, iface *water.Interface, c *cache.Cache) {
 
 		iface.Write(b[:])
 	}
+}
+
+func errorForbidden(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusForbidden)
+	w.Write([]byte("403 No Permission"))
 }
