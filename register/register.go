@@ -50,6 +50,22 @@ func PickClientIP(cidr string) (clientIP string, prefixLength string) {
 	return "", ""
 }
 
+func KeepAliveClientIP(ip string) {
+	if ExistClientIP(ip) {
+		_register.Increment(ip, 1)
+	} else {
+		AddClientIP(ip)
+	}
+}
+
+func ListClientIP() (result []string) {
+	for k := range _register.Items() {
+		result = append(result, k)
+	}
+
+	return result
+}
+
 func addressCount(network *net.IPNet) uint64 {
 	prefixLen, bits := network.Mask.Size()
 	return 1 << (uint64(bits) - uint64(prefixLen))
