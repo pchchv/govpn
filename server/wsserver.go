@@ -3,13 +3,18 @@ package server
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/patrickmn/go-cache"
 	"github.com/pchchv/govpn/common/cipher"
+	"github.com/pchchv/govpn/common/config"
 	"github.com/pchchv/govpn/common/netutil"
+	"github.com/pchchv/govpn/register"
+	"github.com/pchchv/govpn/vpn"
 	"github.com/songgao/water"
 	"github.com/songgao/water/waterutil"
 )
@@ -21,6 +26,84 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+func StartWSServer(config config.Config) {
+	iface := vpn.CreateVpn(config.CIDR)
+	c := cache.New(30*time.Minute, 10*time.Minute)
+
+	go vpnToWs(iface, c)
+
+	log.Printf("govpn ws server started on %v,CIDR is %v", config.LocalAddr, config.CIDR)
+
+	http.HandleFunc("/way-to-freedom", func(w http.ResponseWriter, r *http.Request) {
+		wsConn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		wsToVpn(wsConn, iface, c)
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		io.WriteString(w, "Hello!")
+	})
+
+	http.HandleFunc("/ip", func(w http.ResponseWriter, req *http.Request) {
+		ip := req.Header.Get("X-Forwarded-For")
+		if ip == "" {
+			ip = strings.Split(req.RemoteAddr, ":")[0]
+		}
+		resp := fmt.Sprintf("%v", ip)
+		io.WriteString(w, resp)
+	})
+
+	http.HandleFunc("/register/pick/ip", func(w http.ResponseWriter, req *http.Request) {
+		key := req.Header.Get("key")
+		if key != config.Key {
+			errorForbidden(w, req)
+			return
+		}
+		ip, pl := register.PickClientIP(config.CIDR)
+		resp := fmt.Sprintf("%v/%v", ip, pl)
+		io.WriteString(w, resp)
+	})
+
+	http.HandleFunc("/register/delete/ip", func(w http.ResponseWriter, req *http.Request) {
+		key := req.Header.Get("key")
+		if key != config.Key {
+			errorForbidden(w, req)
+			return
+		}
+		ip := req.URL.Query().Get("ip")
+		if ip != "" {
+			register.DeleteClientIP(ip)
+		}
+		io.WriteString(w, "OK")
+	})
+
+	http.HandleFunc("/register/keepalive/ip", func(w http.ResponseWriter, req *http.Request) {
+		key := req.Header.Get("key")
+		if key != config.Key {
+			errorForbidden(w, req)
+			return
+		}
+		ip := req.URL.Query().Get("ip")
+		if ip != "" {
+			register.KeepAliveClientIP(ip)
+		}
+		io.WriteString(w, "OK")
+	})
+
+	http.HandleFunc("/register/list/ip", func(w http.ResponseWriter, req *http.Request) {
+		key := req.Header.Get("key")
+		if key != config.Key {
+			errorForbidden(w, req)
+			return
+		}
+		io.WriteString(w, strings.Join(register.ListClientIP(), "\r\n"))
+	})
+
+	http.ListenAndServe(config.LocalAddr, nil)
 }
 
 func vpnToWs(iface *water.Interface, c *cache.Cache) {
