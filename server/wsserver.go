@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/patrickmn/go-cache"
@@ -37,5 +38,32 @@ func vpnToWs(iface *water.Interface, c *cache.Cache) {
 			b = cipher.XOR(b)
 			v.(*websocket.Conn).WriteMessage(websocket.BinaryMessage, b)
 		}
+	}
+}
+
+func wsToVpn(wsConn *websocket.Conn, iface *water.Interface, c *cache.Cache) {
+	defer netutil.CloseWS(wsConn)
+
+	for {
+		wsConn.SetReadDeadline(time.Now().Add(time.Duration(30) * time.Second))
+		_, b, err := wsConn.ReadMessage()
+		if err != nil || err == io.EOF {
+			break
+		}
+
+		b = cipher.XOR(b)
+		if !waterutil.IsIPv4(b) {
+			continue
+		}
+
+		srcAddr, dstAddr := netutil.GetAddr(b)
+		if srcAddr == "" || dstAddr == "" {
+			continue
+		}
+
+		key := fmt.Sprintf("%v->%v", srcAddr, dstAddr)
+		c.Set(key, wsConn, cache.DefaultExpiration)
+
+		iface.Write(b[:])
 	}
 }
