@@ -1,6 +1,25 @@
 package register
 
-import "net"
+import (
+	"net"
+
+	"github.com/patrickmn/go-cache"
+)
+
+var _register *cache.Cache
+
+func AddClientIP(ip string) {
+	_register.Add(ip, 0, cache.DefaultExpiration)
+}
+
+func ExistClientIP(ip string) bool {
+	_, ok := _register.Get(ip)
+	return ok
+}
+
+func DeleteClientIP(ip string) {
+	_register.Delete(ip)
+}
 
 func addressCount(network *net.IPNet) uint64 {
 	prefixLen, bits := network.Mask.Size()
