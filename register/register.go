@@ -1,7 +1,9 @@
 package register
 
 import (
+	"log"
 	"net"
+	"strings"
 
 	"github.com/patrickmn/go-cache"
 )
@@ -19,6 +21,33 @@ func ExistClientIP(ip string) bool {
 
 func DeleteClientIP(ip string) {
 	_register.Delete(ip)
+}
+
+func PickClientIP(cidr string) (clientIP string, prefixLength string) {
+	ip, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		log.Panicf("error cidr %v", cidr)
+	}
+	total := addressCount(ipNet) - 3
+	index := uint64(0)
+
+	ip = incr(ipNet.IP.To4())
+
+	for {
+		ip = incr(ip)
+		index++
+
+		if index >= total {
+			break
+		}
+
+		if !ExistClientIP(ip.String()) {
+			AddClientIP(ip.String())
+			return ip.String(), strings.Split(cidr, "/")[1]
+		}
+	}
+
+	return "", ""
 }
 
 func addressCount(network *net.IPNet) uint64 {
