@@ -4,11 +4,16 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/patrickmn/go-cache"
 )
 
 var _register *cache.Cache
+
+func init() {
+	_register = cache.New(30*time.Minute, 3*time.Minute)
+}
 
 func AddClientIP(ip string) {
 	_register.Add(ip, 0, cache.DefaultExpiration)
