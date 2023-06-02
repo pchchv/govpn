@@ -14,6 +14,15 @@ import (
 	"github.com/songgao/water/waterutil"
 )
 
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:    1500,
+	WriteBufferSize:   1500,
+	EnableCompression: true,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
 func vpnToWs(iface *water.Interface, c *cache.Cache) {
 	buffer := make([]byte, 1500)
 
