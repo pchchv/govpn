@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 
+	"github.com/pchchv/govpn/client"
 	"github.com/pchchv/govpn/common/config"
+	"github.com/pchchv/govpn/server"
 )
 
 func main() {
@@ -18,4 +20,20 @@ func main() {
 	flag.Parse()
 
 	config.Init()
+
+	switch config.Protocol {
+	case "udp":
+		if config.ServerMode {
+			server.StartUDPServer(config)
+		} else {
+			client.StartUDPClient(config)
+		}
+	case "ws":
+		if config.ServerMode {
+			server.StartWSServer(config)
+		} else {
+			client.StartWSClient(config)
+		}
+	default:
+	}
 }
