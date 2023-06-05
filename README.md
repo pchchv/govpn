@@ -35,3 +35,19 @@ sudo ./main -l=:3000 -s=server-addr:3001 -c=172.16.0.10/24 -k=123456
   sudo apt-get install iptables-persistent
   sudo iptables-save > /etc/iptables/rules.v4
 ```
+
+# Usage of ./main:
+
+```
+  -S    server mode
+  -c string
+        vpn interface CIDR (default "172.16.0.1/24")
+  -k string
+        encryption key (default "S#Q#FBSDAE#%!@#!@#%!NDADSA")
+  -p string
+        protocol ws/wss/udp (default "wss")
+  -l string
+        local address (default "0.0.0.0:3000")
+  -s string
+        server address (default "0.0.0.0:3001")        
+```
