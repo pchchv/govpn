@@ -17,7 +17,7 @@ import (
 )
 
 func StartWSClient(config config.Config) {
-	iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateClientVpn(config.CIDR)
 	c := cache.New(30*time.Minute, 10*time.Minute)
 	packet := make([]byte, 1500)
 

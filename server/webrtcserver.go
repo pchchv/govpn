@@ -10,6 +10,7 @@ import (
 	"github.com/pchchv/govpn/common/config"
 	"github.com/pchchv/govpn/common/netutil"
 	"github.com/pchchv/govpn/common/sdputil"
+	"github.com/pchchv/govpn/vpn"
 	"github.com/songgao/water"
 	"github.com/songgao/water/waterutil"
 	"golang.org/x/net/context"
@@ -31,21 +32,19 @@ func (f *RTCForwarder) forward(iface *water.Interface, channel *webrtc.DataChann
 			continue
 		}
 		b := packet[:n]
-		if !waterutil.IsIPv4(b) {
-			continue
-		}
-		srcAddr, dstAddr := netutil.GetAddr(b)
-		if srcAddr == "" || dstAddr == "" {
-			continue
-		}
 
+		srcAddr, dstAddr := netutil.GetAddr(b)
+		if waterutil.IsIPv4(b) && srcAddr != "" && dstAddr != "" {
+			fmt.Printf("relaying packet: %s -> %s: %d bytes\n", srcAddr, dstAddr, len(b))
+		}
+		
 		b = cipher.XOR(b)
 		channel.Send(b)
 	}
 }
 
 func StartWebRTCServer(ctx context.Context, config config.Config) {
-	//iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateServerVpn(config.CIDR)
 	rtcConfig := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -77,24 +76,6 @@ func StartWebRTCServer(ctx context.Context, config config.Config) {
 		panic(err)
 	}
 
-	channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		//b := cipher.XOR(msg.Data)
-		println("new message", string(msg.Data))
-		// if !waterutil.IsIPv4(b) {
-		// 	return
-		// }
-
-		// iface.Write(b)
-
-		// srcAddr, dstAddr := netutil.GetAddr(b)
-		// if srcAddr == "" || dstAddr == "" {
-		// 	return
-		// }
-
-		// key := fmt.Sprintf("%v->%v", srcAddr, dstAddr)
-		// forwarder.connCache.Set(key, "", cache.DefaultExpiration)
-	})
-
 	offer, err := GenOffer(peerConnection)
 	if err != nil {
 		panic(err)
@@ -104,12 +85,8 @@ func StartWebRTCServer(ctx context.Context, config config.Config) {
 
 	log.Printf("govpn webrtc server started on %v,CIDR is %v", config.LocalAddr, config.CIDR)
 
-	// forwarder := &RTCForwarder{connCache: cache.New(30*time.Minute, 10*time.Minute), peerConnection: peerConnection}
-	// go forwarder.forward(iface, channel)
-
-	channel.OnOpen(func() {
-		println("CHANNEL OPENED")
-	})
+	forwarder := &RTCForwarder{connCache: cache.New(30*time.Minute, 10*time.Minute), peerConnection: peerConnection}
+	go forwarder.forward(iface, channel)
 
 	sdp, err := sdputil.SDPPrompt()
 	if err != nil {
@@ -121,15 +98,21 @@ func StartWebRTCServer(ctx context.Context, config config.Config) {
 		println(err.Error())
 	}
 
-	for {
-		time.Sleep(time.Second * 5)
-		err = channel.SendText("heowow")
-		if err != nil {
-			println(err.Error())
-		}
+	channel.OnMessage(func(msg webrtc.DataChannelMessage) {
+		b := cipher.XOR(msg.Data)
 
-		println("sent some shit")
-	}
+		iface.Write(b)
+
+		srcAddr, dstAddr := netutil.GetAddr(b)
+		
+
+		fmt.Printf("responding packet: %s -> %s: %d bytes", srcAddr, dstAddr, len(b))
+
+		if waterutil.IsIPv4(b) && srcAddr != "" && dstAddr != "" {
+			key := fmt.Sprintf("%v->%v", srcAddr, dstAddr)
+			forwarder.connCache.Set(key, "", cache.DefaultExpiration)
+		}
+	})
 
 	<-ctx.Done()	
 }

@@ -2,12 +2,13 @@ package client
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pchchv/govpn/common/cipher"
 	"github.com/pchchv/govpn/common/config"
 	"github.com/pchchv/govpn/common/sdputil"
+	"github.com/pchchv/govpn/vpn"
 	"github.com/pion/webrtc/v3"
+	"github.com/songgao/water/waterutil"
 )
 func createConnection() (*webrtc.PeerConnection, error) {
 	config := webrtc.Configuration{
@@ -42,16 +43,6 @@ func StartWebRTCClient(config config.Config) {
 		}
 	})
 
-	ordered := true
-	mplt := uint16(5000)
-	channel, err := peerConnection.CreateDataChannel("control", &webrtc.DataChannelInit{
-		Ordered:           &ordered,
-		MaxPacketLifeTime: &mplt,
-	})
-	if err != nil {
-		panic(err)
-	}
-
 	answer, err := sdputil.SDPPrompt()
 	if err != nil {
 		panic(err)
@@ -62,38 +53,48 @@ func StartWebRTCClient(config config.Config) {
 		panic(err)
 	}
 	
-	// iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateClientVpn(config.CIDR)
 
-	channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		// relay packets
-		// b := cipher.XOR(msg.Data)
-		// if !waterutil.IsIPv4(b) {
-		// 	return
-		// }
+	var channel *webrtc.DataChannel
+	peerConnection.OnDataChannel(func(dc *webrtc.DataChannel) {
+		println("New data channel created: ", dc.Label())
+		channel = dc
+		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+			// relay packets
+			b := cipher.XOR(msg.Data)
+			if !waterutil.IsIPv4(b) {
+				return
+			}
 
-		// iface.Write(b)
+			println("incoming packet: ", len(b), "bytes")
+			iface.Write(b)
+		})
 
-		println(string(msg.Data))
 	})
 
-	//packet := make([]byte, 1500)
+	packet := make([]byte, 1500)
 	for {
-		// n, err := iface.Read(packet)
-		// if err != nil || n == 0 {
-		// 	continue
-		// }
+		n, err := iface.Read(packet)
+		if err != nil || n == 0 {
+			continue
+		}
 		// if !waterutil.IsIPv4(packet) {
+		// 	println("discarding, invalid packet")
 		// 	continue
 		// }
-		time.Sleep(5 * time.Second)
 
-		//b := cipher.XOR([]byte("HELLO"))
-		err = channel.Send([]byte("Helllo"))
+		if channel == nil || channel.ReadyState() != webrtc.DataChannelStateOpen {
+			println("channel not ready yet, not relaying")
+			continue
+		}
+
+		println("relaying packet: ", len(packet), "bytes")
+		b := cipher.XOR(packet)
+		err = channel.Send(b)
 		if err != nil {
 			println(err.Error())
 			continue
 		}
-		println("sent hello packet")
 	}
 }
 

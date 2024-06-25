@@ -7,7 +7,7 @@ import (
 	"github.com/songgao/water"
 )
 
-func CreateVpn(cidr string) (iface *water.Interface) {
+func CreateServerVpn(cidr string) (iface *water.Interface) {
 	c := water.Config{DeviceType: water.TAP}
 	iface, err := water.New(c)
 	if err != nil {
@@ -16,7 +16,22 @@ func CreateVpn(cidr string) (iface *water.Interface) {
 
 	log.Println("interface allocated:", iface.Name())
 
-	osutil.ConfigVpn(cidr, iface)
+	osutil.ConfigVpnServer(cidr, iface)
 
 	return iface
 }
+
+func CreateClientVpn(cidr string) (iface *water.Interface) {
+	c := water.Config{DeviceType: water.TAP}
+	iface, err := water.New(c)
+	if err != nil {
+		log.Fatalln("failed to allocate vpn interface:", err)
+	}
+
+	log.Println("interface allocated:", iface.Name())
+
+	osutil.ConfigVpnClient(cidr, iface)
+
+	return iface
+}
+
