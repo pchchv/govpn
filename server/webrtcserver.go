@@ -106,7 +106,7 @@ func StartWebRTCServer(ctx context.Context, config config.Config) {
 		srcAddr, dstAddr := netutil.GetAddr(b)
 		
 
-		fmt.Printf("responding packet: %s -> %s: %d bytes", srcAddr, dstAddr, len(b))
+		fmt.Printf("responding packet: %s -> %s: %d bytes\n", srcAddr, dstAddr, len(b))
 
 		if waterutil.IsIPv4(b) && srcAddr != "" && dstAddr != "" {
 			key := fmt.Sprintf("%v->%v", srcAddr, dstAddr)

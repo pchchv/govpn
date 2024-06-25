@@ -8,7 +8,6 @@ import (
 	"github.com/pchchv/govpn/common/sdputil"
 	"github.com/pchchv/govpn/vpn"
 	"github.com/pion/webrtc/v3"
-	"github.com/songgao/water/waterutil"
 )
 func createConnection() (*webrtc.PeerConnection, error) {
 	config := webrtc.Configuration{
@@ -62,9 +61,6 @@ func StartWebRTCClient(config config.Config) {
 		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
 			// relay packets
 			b := cipher.XOR(msg.Data)
-			if !waterutil.IsIPv4(b) {
-				return
-			}
 
 			println("incoming packet: ", len(b), "bytes")
 			iface.Write(b)
