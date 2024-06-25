@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
+	"os/signal"
 
 	"github.com/pchchv/govpn/client"
 	"github.com/pchchv/govpn/common/config"
@@ -15,12 +18,12 @@ func main() {
 	flag.StringVar(&config.LocalAddr, "l", "0.0.0.0:3000", "local address")
 	flag.StringVar(&config.ServerAddr, "s", "0.0.0.0:3001", "server address")
 	flag.StringVar(&config.Key, "k", "6w9z$C&F)J@NcRfWjXn3r4u7x!A%D*G-", "encryption key")
-	flag.StringVar(&config.Protocol, "p", "wss", "protocol ws/wss/udp")
+	flag.StringVar(&config.Protocol, "p", "wss", "protocol ws/wss/udp/rtc")
 	flag.BoolVar(&config.ServerMode, "S", false, "server mode")
 	flag.Parse()
 
 	config.Init()
-
+	
 	switch config.Protocol {
 	case "udp":
 		if config.ServerMode {
@@ -33,6 +36,19 @@ func main() {
 			server.StartWSServer(config)
 		} else {
 			client.StartWSClient(config)
+		}
+	case "rtc":
+		if config.ServerMode {
+			ctx, cancel := context.WithCancel(context.Background())
+			server.StartWebRTCServer(ctx, config)
+
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
+			cancel()
+			return
+		} else {
+			client.StartWebRTCClient(config)
 		}
 	default:
 	}
