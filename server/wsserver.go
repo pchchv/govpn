@@ -29,7 +29,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func StartWSServer(config config.Config) {
-	iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateServerVpn(config.CIDR)
 	c := cache.New(30*time.Minute, 10*time.Minute)
 
 	go vpnToWs(iface, c)

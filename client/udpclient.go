@@ -11,7 +11,7 @@ import (
 )
 
 func StartUDPClient(config config.Config) {
-	iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateClientVpn(config.CIDR)
 	serverAddr, err := net.ResolveUDPAddr("udp", config.ServerAddr)
 	if err != nil {
 		log.Fatalln("failed to resolve server addr:", err)

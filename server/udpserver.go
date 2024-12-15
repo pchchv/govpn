@@ -46,7 +46,7 @@ func (f *Forwarder) forward(iface *water.Interface, conn *net.UDPConn) {
 }
 
 func StartUDPServer(config config.Config) {
-	iface := vpn.CreateVpn(config.CIDR)
+	iface := vpn.CreateServerVpn(config.CIDR)
 	localAddr, err := net.ResolveUDPAddr("udp", config.LocalAddr)
 	if err != nil {
 		log.Fatalln("failed to get UDP socket:", err)
